@@ -1,0 +1,6 @@
+@UseDnsToys_HostAddress = http://localhost:5252
+
+GET {{UseDnsToys_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
