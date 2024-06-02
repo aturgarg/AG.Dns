@@ -16,6 +16,10 @@ namespace AG.Dns.Requests
                 {
                     case QueryType.unit:
                         return new UnitConverter();
+                    case QueryType.epoch:
+                        return new EpochConvertor();
+                    case QueryType.random:
+                        return new RandomGenerator();
                     default:
                         throw new ArgumentException("Unable to identify converter required");
                 }

@@ -12,9 +12,7 @@ namespace Dns.Server.Konsole
             Console.WriteLine("Hello, World! I am a Dsn Server.");
 
             Console.CancelKeyPress += Console_CancelKeyPress;
-
-            Console.WriteLine("DNS Server - Console Mode");
-
+           
             if (args.Length == 0)
             {
                 args = new string[] { "./appsettings.json" };

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using AG.Dns.Requests.Models;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using AG.Dns.Requests.Models;
 
 namespace AG.Dns.Requests.Services
 {
@@ -82,9 +78,7 @@ namespace AG.Dns.Requests.Services
             //var result = $"{query} 1 TXT \"{value:0.00} {fromUnit.Name} ({fromUnit.Symbol}) = {conversionValue:0.00} {toUnit.Name} ({toUnit.Symbol})\"";
 
             var result = $"{value:0.00} {fromUnit.Name} ({fromUnit.Symbol}) = {conversionValue:0.00} {toUnit.Name} ({toUnit.Symbol})";
-            //var result = $"{value:0.00} {fromUnit.Name} ({fromUnit.Symbol}) = {conversionValue:0.00} {toUnit.Name} ({toUnit.Symbol})";
-            //var result = $"{conversionValue:0.00} ({toUnit.Symbol})";
-            //var result = "";
+
             return new List<string> { result };
         }
 

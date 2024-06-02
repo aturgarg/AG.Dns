@@ -1,8 +1,5 @@
-﻿using AG.Dns.Requests;
-using AG.Dns.Requests.Services;
-using AG.DnsServer.Enums;
+﻿using AG.DnsServer.Handler;
 using AG.DnsServer.Models;
-using AG.DnsServer.Models.ResponseData;
 using AG.DnsServer.UDP;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -21,7 +18,7 @@ namespace AG.DnsServer.Server
         private Dictionary<string, EndPoint> _requestResponseMap = new Dictionary<string, EndPoint>();
         private ReaderWriterLockSlim _requestResponseMapLock = new ReaderWriterLockSlim();
         private ushort port;
-        private RequestResolver _requestResolver;
+        private IQueryHandler _queryHandler;
 
         internal DnsServer(ushort port)
         {
@@ -34,7 +31,7 @@ namespace AG.DnsServer.Server
             _udpListener.Initialize(this.port);
             _udpListener.OnRequest += ProcessUdpRequest;
             _defaultDns = GetDefaultDNS().ToArray();
-            _requestResolver = new RequestResolver();
+            _queryHandler = new QuestionHandler();
         } 
 
         
@@ -61,73 +58,42 @@ namespace AG.DnsServer.Server
                 {
                     foreach (Question question in message.Questions)
                     {
-                        Console.WriteLine("{0} asked for {1} {2} {3}", remoteEndPoint.ToString(), question.Name, question.Class, question.Type);
-
-                        int lastDotIndex = question.Name.LastIndexOf('.');
-                        if (lastDotIndex == -1 || lastDotIndex == question.Name.Length - 1)
-                        {
-                            string errorResponse = "Invalid query format.";
-                            //return Encoding.UTF8.GetBytes(errorResponse);
-                        }
-                        
-
-                        string type = question.Name.Substring(lastDotIndex + 1);
-                        string query = question.Name.Substring(0, lastDotIndex - 1);
-                        IConverter converter = _requestResolver.Resolve(type);
-                        var result = converter.Query(query);
-                        var rdata = new TextQueryRData() { Data = result.First().Trim() };
-
-                        //message.QR = true;
-                        //message.AA = false;
-                        //message.RA = false;
-                        //message.RD = true;
-                        //message.RCode = (byte)RCode.NOERROR;
-                        //message.AuthenticatingData = false;
-                      
-                        Console.WriteLine(rdata.Data);
-
-                        message.AdditionalCount = 0;
-                        message.Additionals.Clear();
-
-                        message.QR = true;
-                        message.AA = true;
-                        message.RA = false;
-                        message.AnswerCount++;                        
-                        message.Answers.Add(new ResourceRecord
-                        {
-                            Name = query,
-                            Class = ResourceClass.IN,
-                            Type = ResourceType.TXT,
-                            TTL = 60,
-                            RData = rdata
-                        });                       
-
+                        _queryHandler.Handle(remoteEndPoint.ToString(), message, question);
 
                         // store current IP address and Query ID.
-                        try
-                        {
-                            string key = GetKeyName(message);
-                            _requestResponseMapLock.EnterWriteLock();
-                            if (!_requestResponseMap.ContainsKey(key))
-                            {
-                                _requestResponseMap.Add(key, remoteEndPoint);
-                            }
-                        }
-                        finally
-                        {
-                            _requestResponseMapLock.ExitWriteLock();
-                        }
-
-                        using (MemoryStream responseStream = new MemoryStream())
-                        {
-                            message.WriteToStream(responseStream);
-
-                            Interlocked.Increment(ref _responses);
-
-                            SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, remoteEndPoint);
-                        }
+                        StoreIPAndQueryId(remoteEndPoint, message);
+                        SendResponse(remoteEndPoint, message);
                     }
                 }
+            }
+        }
+        
+        private void SendResponse(EndPoint remoteEndPoint, DnsMessage message)
+        {
+            using (MemoryStream responseStream = new MemoryStream())
+            {
+                message.WriteToStream(responseStream);
+
+                Interlocked.Increment(ref _responses);
+
+                SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, remoteEndPoint);
+            }
+        }
+
+        private void StoreIPAndQueryId(EndPoint remoteEndPoint, DnsMessage message)
+        {
+            try
+            {
+                string key = GetKeyName(message);
+                _requestResponseMapLock.EnterWriteLock();
+                if (!_requestResponseMap.ContainsKey(key))
+                {
+                    _requestResponseMap.Add(key, remoteEndPoint);
+                }
+            }
+            finally
+            {
+                _requestResponseMapLock.ExitWriteLock();
             }
         }
 
@@ -171,22 +137,9 @@ namespace AG.DnsServer.Server
                 foreach (IPAddress dns in dnsServers)
                 {
                     Console.WriteLine("Discovered DNS: ", dns);
-
                     yield return dns;
                 }
-
             }
-        }
-
-        public void DumpHtml(TextWriter writer)
-        {
-            writer.WriteLine("DNS Server Status<br/>");
-            writer.Write("Default Nameservers:");
-            foreach (IPAddress dns in _defaultDns)
-            {
-                writer.WriteLine(dns);
-            }
-            writer.WriteLine("DNS Server Status<br/>");
         }
     }
 }
