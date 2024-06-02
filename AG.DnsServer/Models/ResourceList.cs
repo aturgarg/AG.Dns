@@ -1,9 +1,9 @@
 ﻿using AG.DnsServer.Enums;
 using AG.DnsServer.Extensions;
+using AG.DnsServer.Models.ResponseData;
 
 namespace AG.DnsServer.Models
 {
-
     public class ResourceList : List<ResourceRecord>
     {
         public int LoadFrom(byte[] bytes, int offset, ushort count)

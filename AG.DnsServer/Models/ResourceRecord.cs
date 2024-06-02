@@ -1,5 +1,6 @@
 ﻿using AG.DnsServer.Enums;
 using AG.DnsServer.Extensions;
+using AG.DnsServer.Models.ResponseData;
 
 namespace AG.DnsServer.Models
 {

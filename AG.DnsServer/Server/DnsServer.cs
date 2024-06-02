@@ -2,21 +2,18 @@
 using AG.Dns.Requests.Services;
 using AG.DnsServer.Enums;
 using AG.DnsServer.Models;
+using AG.DnsServer.Models.ResponseData;
 using AG.DnsServer.UDP;
-using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Reflection.PortableExecutable;
-using System.Text;
 
 namespace AG.DnsServer.Server
 {
     internal class DnsServer
     {
         private IPAddress[] _defaultDns;
-        private UdpListener _udpListener; // listener for UDP53 traffic
-        //private IDnsResolver _resolver; // resolver for name entries
+        private UdpListener _udpListener;        
         private long _requests;
         private long _responses;
         private long _nacks;
@@ -34,46 +31,24 @@ namespace AG.DnsServer.Server
         public void Initialize()
         {
             _udpListener = new UdpListener();
-
             _udpListener.Initialize(this.port);
             _udpListener.OnRequest += ProcessUdpRequest;
-
             _defaultDns = GetDefaultDNS().ToArray();
-
             _requestResolver = new RequestResolver();
-        }
+        } 
 
-
-
-        /// <summary>Initialize server with specified domain name resolver</summary>
-        /// <param name="resolver"></param>
-        //public void Initialize(IDnsResolver resolver)
-        //{
-        //    _resolver = resolver;
-
-        //    _udpListener = new UdpListener();
-
-        //    _udpListener.Initialize(this.port);
-        //    _udpListener.OnRequest += ProcessUdpRequest;
-
-        //    _defaultDns = GetDefaultDNS().ToArray();
-        //}
-
-        /// <summary>Start DNS listener</summary>
+        
         public void Start(CancellationToken ct)
         {
             _udpListener.Start();
             ct.Register(_udpListener.Stop);
         }
 
-        /// <summary>Process UDP Request</summary>
-        /// <param name="args"></param>
         private void ProcessUdpRequest(byte[] buffer, EndPoint remoteEndPoint)
         {
             DnsMessage message;
             if (!DnsProtocol.TryParse(buffer, out message))
             {
-                // TODO log bad message
                 Console.WriteLine("unable to parse message");
                 return;
             }
@@ -94,7 +69,6 @@ namespace AG.DnsServer.Server
                             string errorResponse = "Invalid query format.";
                             //return Encoding.UTF8.GetBytes(errorResponse);
                         }
-
                         
 
                         string type = question.Name.Substring(lastDotIndex + 1);
@@ -151,84 +125,10 @@ namespace AG.DnsServer.Server
                             Interlocked.Increment(ref _responses);
 
                             SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, remoteEndPoint);
-                            //SendUdp(responseStream.ToArray(), 0, (int)responseStream.Position, remoteEndPoint);
-
                         }
-
-                        //// Construct response
-                        //byte[] response = new byte[header.Length + question.Length + answer.Length];
-                        //Array.Copy(header, 0, response, 0, header.Length);
-                        //Array.Copy(question, 0, response, header.Length, question.Length);
-                        //Array.Copy(answer, 0, response, header.Length + question.Length, answer.Length);
-
-                        //return response;
-
-                        //using (MemoryStream responseStream = new MemoryStream(512))
-                        //{
-                        //    message.WriteToStream(responseStream);
-                        //    if (message.IsQuery())
-                        //    {
-                        //        // send to upstream DNS servers
-                        //        foreach (IPAddress dnsServer in _defaultDns)
-                        //        {
-                        //            SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, new IPEndPoint(dnsServer, 53));
-                        //        }
-                        //    }
-                        //    else
-                        //    {
-                        //        Interlocked.Increment(ref _responses);
-                        //        SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, remoteEndPoint);
-                        //    }
-                        //}
                     }
                 }
             }
-            //else
-            //{
-            //    // message is response to a delegated query
-            //    string key = GetKeyName(message);
-            //    try
-            //    {
-            //        _requestResponseMapLock.EnterUpgradeableReadLock();
-
-            //        EndPoint ep;
-            //        if (_requestResponseMap.TryGetValue(key, out ep))
-            //        {
-            //            // first test establishes presence
-            //            try
-            //            {
-            //                _requestResponseMapLock.EnterWriteLock();
-            //                // second test within lock means exclusive access
-            //                if (_requestResponseMap.TryGetValue(key, out ep))
-            //                {
-            //                    using (MemoryStream responseStream = new MemoryStream(512))
-            //                    {
-            //                        message.WriteToStream(responseStream);
-            //                        Interlocked.Increment(ref _responses);
-
-            //                        Console.WriteLine("{0} answered {1} {2} {3} to {4}", remoteEndPoint.ToString(), message.Questions[0].Name, message.Questions[0].Class, message.Questions[0].Type, ep.ToString());
-
-            //                        SendUdp(responseStream.GetBuffer(), 0, (int)responseStream.Position, ep);
-            //                    }
-            //                    _requestResponseMap.Remove(key);
-            //                }
-
-            //            }
-            //            finally
-            //            {
-            //                _requestResponseMapLock.ExitWriteLock();
-            //            }
-            //        }
-            //        else
-            //        {
-            //            Interlocked.Increment(ref _nacks);
-            //        }
-            //    }
-            //    finally
-            //    {
-            //        _requestResponseMapLock.ExitUpgradeableReadLock();
-            //    }
-            //}
         }
 
         private string GetKeyName(DnsMessage message)

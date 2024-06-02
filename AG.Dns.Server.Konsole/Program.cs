@@ -1,11 +1,4 @@
-﻿using AG.Dns.Requests.Enums;
-using AG.Dns.Requests.Services;
-using AG.DnsServer.UDP;
-using AG.DnsServer.Models;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using AG.DnsServer;
+﻿using AG.DnsServer;
 
 namespace Dns.Server.Konsole
 {
@@ -27,10 +20,8 @@ namespace Dns.Server.Konsole
                 args = new string[] { "./appsettings.json" };
             }
            
-            DnsFacade.Run(args[0], cts.Token);
-  
+            DnsFacade.Run(args[0], cts.Token);  
             _exitTimeout.Set();
-
         }
 
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
